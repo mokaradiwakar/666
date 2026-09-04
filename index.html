@@ -10,7 +10,7 @@
 <div id="industryDetails" class="details"><div class="details-title">🏢 Industry information</div><div class="group"><label class="label">Organization Type</label><select id="orgType"><option value="">Select</option><option>COMPANY</option><option>STARTUP</option><option>TECHNOLOGY_PARTNER</option><option>EXPERT_MENTOR</option></select></div><div class="group"><label class="label">Organization Name</label><input id="orgName" placeholder="Company / Startup name"></div><div class="row"><div class="group"><label class="label">Sector</label><input id="sector" placeholder="IT, Agriculture..."></div><div class="group"><label class="label">Website</label><input id="website" type="url" placeholder="https://..."></div></div><div class="group"><label class="label">Areas of Expertise</label><input id="expertise" placeholder="AI, Cloud, IoT, Hardware..."></div></div>
 <div id="ngoDetails" class="details"><div class="details-title">🤲 NGO information</div><div class="group"><label class="label">NGO / Organization Name</label><input id="ngoName" placeholder="Organization name"></div><div class="row"><div class="group"><label class="label">Focus Area</label><select id="ngoFocus"><option value="">Select</option><option>Education</option><option>Healthcare</option><option>Environment</option><option>Rural Development</option><option>Agriculture</option><option>Women & Children</option><option>Water & Sanitation</option><option>Other</option></select></div><div class="group"><label class="label">Location</label><input id="ngoLocation" placeholder="City / District"></div></div><div class="group"><label class="label">Areas of Work</label><input id="ngoWork" placeholder="Describe your work"></div></div>
 <div id="verify" class="verify"><strong>🔐 Verification required</strong><br>University, Industry and NGO accounts are stored as <strong>PENDING</strong> until a coordinator verifies the organizational affiliation. Users cannot change their role themselves.</div><label class="terms"><input id="terms" type="checkbox" required><span>I confirm that the information is accurate and agree to the Idea2Impact terms and privacy policy.</span></label><button id="signupBtn" class="primary" type="submit">Create Account →</button><div class="or"><span>OR</span></div><button id="googleSignupBtn" type="button" class="google" onclick="googleSignup()">🔵 Continue with Google</button><div class="bottom">Already have an account? <span onclick="showLogin()">Sign in</span></div></form>
-<form id="loginForm" class="form"><div class="info">🔐 Your dashboard is selected automatically from the role stored in your Idea2Impact profile.</div><div class="group"><label class="label">Email</label><input id="loginEmail" type="email" placeholder="you@example.com" required></div><div class="group"><label class="label">Password</label><div class="password"><input id="loginPassword" type="password" placeholder="Enter your password" required><span class="toggle" onclick="togglePass('loginPassword',this)">Show</span></div></div><div class="forgot" onclick="resetPassword()">Forgot password?</div><button id="loginBtn" class="primary" type="submit">Sign In →</button><div class="or"><span>OR</span></div><button id="googleLoginBtn" type="button" class="google" onclick="googleLogin()">🔵 Continue with Google</button><div class="bottom">Don't have an account? <span onclick="showSignup()">Create Account</span></div></form></main></div></section>
+<form id="loginForm" class="form"><div class="info">🔐 Select the role you are signing in as. We will verify it against your Idea2Impact profile before opening the dashboard.</div><div class="group"><label class="label">Account Role</label><select id="loginRole" required><option value="">Select your role</option><option value="CITIZEN">👤 Citizen</option><option value="UNIVERSITY">🎓 University</option><option value="INDUSTRY">🏢 Industry</option><option value="NGO">🤲 NGO</option></select></div><div class="group"><label class="label">Email</label><input id="loginEmail" type="email" placeholder="you@example.com" required></div><div class="group"><label class="label">Password</label><div class="password"><input id="loginPassword" type="password" placeholder="Enter your password" required><span class="toggle" onclick="togglePass('loginPassword',this)">Show</span></div></div><div class="forgot" onclick="resetPassword()">Forgot password?</div><button id="loginBtn" class="primary" type="submit">Sign In →</button><div class="or"><span>OR</span></div><button id="googleLoginBtn" type="button" class="google" onclick="googleLogin()">🔵 Continue with Google</button><div class="bottom">Don't have an account? <span onclick="showSignup()">Create Account</span></div></form></main></div></section>
 <div id="googlePasswordModal" class="modal" aria-hidden="true"><div class="modal-card"><h2>Create your website password</h2><p>Your Google account verified your email. Now create a separate Idea2Impact website password so you can also sign in later with <strong>email + password</strong>.</p><div id="googlePasswordAlert" class="alert"></div><div class="group"><label class="label">Website Password</label><div class="password"><input id="googleWebsitePassword" type="password" minlength="8" placeholder="At least 8 characters"><span class="toggle" onclick="togglePass('googleWebsitePassword',this)">Show</span></div></div><div class="group"><label class="label">Confirm Website Password</label><div class="password"><input id="googleWebsitePassword2" type="password" minlength="8" placeholder="Re-enter your password"><span class="toggle" onclick="togglePass('googleWebsitePassword2',this)">Show</span></div></div><div class="modal-actions"><button id="googlePasswordBtn" class="primary" type="button">Create Password & Continue →</button></div></div></div>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
@@ -159,7 +159,7 @@ $("signupForm").addEventListener("submit",async e=>{
   const r=selectedRole(), n=$("name").value.trim(), em=$("email").value.trim().toLowerCase(), pw=$("password").value, cpw=$("confirmPassword").value;
   const passwordError=validateWebsitePassword(pw,cpw,em);
   if(passwordError) return alertMsg(passwordError);
-  if(!$('terms').checked) return alertMsg("Please accept the terms and privacy policy.");
+  if(!$("terms").checked) return alertMsg("Please accept the terms and privacy policy.");
   if(!roleDetailsValid(r)) return alertMsg("Please complete the required organization details.");
   loading("signupBtn",true,"Creating account...");
   try{
@@ -167,9 +167,7 @@ $("signupForm").addEventListener("submit",async e=>{
     await updateProfile(c.user,{displayName:n});
     await setDoc(doc(db,"users",c.user.uid),makeProfile(c.user.uid,em,n,r,"password"));
     await sendEmailVerification(c.user).catch(()=>{});
-    // The account and role are now stored in Firestore, so send the user
-    // directly to the dashboard. Email verification is still required for
-    // future password logins.
+    alertMsg("Account created successfully. Your dashboard is opening...","success");
     await route(c.user.uid);
   }catch(err){handle(err);}finally{loading("signupBtn",false);}
 });
@@ -177,7 +175,8 @@ $("signupForm").addEventListener("submit",async e=>{
 $("loginForm").addEventListener("submit",async e=>{
   e.preventDefault(); clearAlert();
   if(Date.now()<lockedUntil) return alertMsg("Too many incorrect attempts. Try again in 30 seconds.");
-  const em=$("loginEmail").value.trim().toLowerCase(), pw=$("loginPassword").value;
+  const em=$("loginEmail").value.trim().toLowerCase(), pw=$("loginPassword").value, selected=$("loginRole").value;
+  if(!selected) return alertMsg("Please select your account role.");
   if(!em||!pw) return alertMsg("Enter your email and password.");
   loading("loginBtn",true,"Signing in...");
   try{
@@ -187,6 +186,16 @@ $("loginForm").addEventListener("submit",async e=>{
       await sendEmailVerification(c.user).catch(()=>{});
       await signOut(auth);
       return alertMsg("This email is not verified yet. We sent a new verification email. Verify it, then sign in again.");
+    }
+    const snap=await getDoc(doc(db,"users",c.user.uid));
+    if(!snap.exists()){
+      await signOut(auth);
+      return alertMsg("Your Firebase account exists, but your Idea2Impact profile is missing. Please create the account again.");
+    }
+    const actual=snap.data().role;
+    if(actual!==selected){
+      await signOut(auth);
+      return alertMsg(`Role mismatch. This email is registered as ${actual}. Please select ${actual} on the login page.`);
     }
     await route(c.user.uid);
   }catch(err){
@@ -198,102 +207,89 @@ $("loginForm").addEventListener("submit",async e=>{
   }finally{loading("loginBtn",false);}
 });
 
-async function finishGoogleUser(user, roleForNewAccount=null){
+async function createGoogleProfile(user, signupData){
   const ref=doc(db,"users",user.uid);
   const existing=await getDoc(ref);
-  if(existing.exists()){ await route(user.uid); return; }
-  const r=roleForNewAccount || sessionStorage.getItem("i2i_google_role") || "CITIZEN";
-  if(!pageForRole(r)) throw new Error("Invalid selected role.");
-  const profile=makeProfile(user.uid,user.email,user.displayName||"",r,"google");
-  profile.verificationStatus=r==="CITIZEN"?"VERIFIED":"PENDING";
+  if(existing.exists()) return existing.data();
+  const role=signupData?.role || "CITIZEN";
+  if(!pageForRole(role)) throw new Error("Invalid selected role.");
+  // Restore the selected signup fields before makeProfile reads them.
+  for(const [id,value] of Object.entries(signupData||{})){
+    const el=$(id);
+    if(el && typeof value==="string") el.value=value;
+  }
+  const profile=makeProfile(user.uid,user.email,signupData?.name||user.displayName||"",role,"google");
+  profile.verificationStatus=role==="CITIZEN"?"VERIFIED":"PENDING";
   await setDoc(ref,profile);
-  sessionStorage.removeItem("i2i_google_role");
-  await route(user.uid);
+  return profile;
 }
 
 window.googleSignup=async()=>{
   clearAlert();
   const r=selectedRole();
   if(!roleDetailsValid(r)) return alertMsg("Please complete the required details for the selected account type first.");
-  // Save the selected role + form details because redirect reloads the page.
   const signupData={
     role:r,
     name:$("name").value.trim(),
-    ...Object.fromEntries([
-      ["citizenLocation", $("citizenLocation")?.value.trim() || ""],
-      ["citizenInterest", $("citizenInterest")?.value || ""],
-      ["memberType", $("memberType")?.value || ""],
-      ["universityName", $("universityName")?.value.trim() || ""],
-      ["department", $("department")?.value.trim() || ""],
-      ["institutionalEmail", $("institutionalEmail")?.value.trim() || ""],
-      ["researchArea", $("researchArea")?.value.trim() || ""],
-      ["orgType", $("orgType")?.value || ""],
-      ["orgName", $("orgName")?.value.trim() || ""],
-      ["sector", $("sector")?.value.trim() || ""],
-      ["website", $("website")?.value.trim() || ""],
-      ["expertise", $("expertise")?.value.trim() || ""],
-      ["ngoName", $("ngoName")?.value.trim() || ""],
-      ["ngoFocus", $("ngoFocus")?.value || ""],
-      ["ngoLocation", $("ngoLocation")?.value.trim() || ""],
-      ["ngoWork", $("ngoWork")?.value.trim() || ""]
-    ])
+    citizenLocation:$("citizenLocation")?.value.trim()||"",
+    citizenInterest:$("citizenInterest")?.value||"",
+    memberType:$("memberType")?.value||"",
+    universityName:$("universityName")?.value.trim()||"",
+    department:$("department")?.value.trim()||"",
+    institutionalEmail:$("institutionalEmail")?.value.trim()||"",
+    researchArea:$("researchArea")?.value.trim()||"",
+    orgType:$("orgType")?.value||"",
+    orgName:$("orgName")?.value.trim()||"",
+    sector:$("sector")?.value.trim()||"",
+    website:$("website")?.value.trim()||"",
+    expertise:$("expertise")?.value.trim()||"",
+    ngoName:$("ngoName")?.value.trim()||"",
+    ngoFocus:$("ngoFocus")?.value||"",
+    ngoLocation:$("ngoLocation")?.value.trim()||"",
+    ngoWork:$("ngoWork")?.value.trim()||""
   };
-  sessionStorage.setItem("i2i_google_signup",JSON.stringify(signupData));
   loading("googleSignupBtn",true,"Opening Google...");
   try{
-    // Redirect is used intentionally: it is more reliable than popup blockers.
-    await signInWithRedirect(auth,provider);
-  }catch(e){
-    loading("googleSignupBtn",false);
-    handle(e);
-  }
+    const result=await signInWithPopup(auth,provider);
+    const user=result.user;
+    const existing=await getDoc(doc(db,"users",user.uid));
+    if(existing.exists()){
+      const actual=existing.data().role;
+      sessionStorage.removeItem("i2i_google_signup");
+      if(actual!==r){await signOut(auth); return alertMsg(`This Google account already belongs to a ${actual} account. Use that role to sign in.`);}
+      await route(user.uid);
+      return;
+    }
+    // Google verifies the email. Add a website password so the same account can use email/password later.
+    const providers=(user.providerData||[]).map(x=>x.providerId);
+    if(!providers.includes("password")){
+      pendingGoogleUser=user; pendingGoogleSignupData=signupData; showGooglePasswordModal(); return;
+    }
+    await createGoogleProfile(user,signupData);
+    await route(user.uid);
+  }catch(e){handle(e);}finally{loading("googleSignupBtn",false);}
 };
 
 window.googleLogin=async()=>{
   clearAlert();
-  sessionStorage.setItem("i2i_google_login","1");
+  const selected=$("loginRole").value;
+  if(!selected) return alertMsg("Please select your account role first.");
   loading("googleLoginBtn",true,"Opening Google...");
   try{
-    await signInWithRedirect(auth,provider);
-  }catch(e){
-    sessionStorage.removeItem("i2i_google_login");
-    loading("googleLoginBtn",false);
-    handle(e);
-  }
+    const result=await signInWithPopup(auth,provider);
+    const snap=await getDoc(doc(db,"users",result.user.uid));
+    if(!snap.exists()){
+      await signOut(auth);
+      return alertMsg("No Idea2Impact account exists for this Google account. Create an account first.");
+    }
+    const actual=snap.data().role;
+    if(actual!==selected){
+      await signOut(auth);
+      return alertMsg(`Role mismatch. This Google account is registered as ${actual}. Please select ${actual}.`);
+    }
+    await route(result.user.uid);
+  }catch(e){handle(e);}finally{loading("googleLoginBtn",false);}
 };
-
-// Complete Google authentication after Firebase redirects back to this page.
-(async function handleGoogleRedirect(){
-  try{
-    const result=await getRedirectResult(auth);
-    if(!result?.user) return;
-    const isLogin=sessionStorage.getItem("i2i_google_login")==="1";
-    const raw=sessionStorage.getItem("i2i_google_signup");
-    sessionStorage.removeItem("i2i_google_login");
-    if(isLogin){
-      const existing=await getDoc(doc(db,"users",result.user.uid));
-      if(!existing.exists()){ await signOut(auth); showSignup(); return alertMsg("No Idea2Impact account exists for this Google account. Create an account first."); }
-      await route(result.user.uid); return;
-    }
-    let signupData={}; try{signupData=raw?JSON.parse(raw):{};}catch{}
-    const existing=await getDoc(doc(db,"users",result.user.uid));
-    const providers=(result.user.providerData||[]).map(x=>x.providerId);
-    // Google authentication succeeded. If the account has no website password yet, ask for one.
-    if(!providers.includes("password")){
-      pendingGoogleUser=result.user; pendingGoogleSignupData=signupData; showGooglePasswordModal(); return;
-    }
-    if(existing.exists()){ sessionStorage.removeItem("i2i_google_signup"); await route(result.user.uid); return; }
-    for(const [id,value] of Object.entries(signupData)){const el=$(id);if(el && typeof value==="string")el.value=value;}
-    const role=signupData.role||"CITIZEN";
-    const profile=makeProfile(result.user.uid,result.user.email,signupData.name||result.user.displayName||"",role,"google");
-    profile.verificationStatus=role==="CITIZEN"?"VERIFIED":"PENDING";
-    await setDoc(doc(db,"users",result.user.uid),profile);
-    sessionStorage.removeItem("i2i_google_signup"); await route(result.user.uid);
-  }catch(e){
-    sessionStorage.removeItem("i2i_google_login");
-    handle(e);
-  }
-})();
 
 window.resetPassword=async()=>{
   clearAlert(); const em=$("loginEmail").value.trim().toLowerCase();
